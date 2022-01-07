@@ -9,6 +9,8 @@
 #include "random_forest.hpp"
 #include "receptor.hpp"
 #include "ligand.hpp"
+#include "array.hpp"
+#include "fixedrandom.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -19,6 +21,7 @@ int main(int argc, char* argv[])
 	size_t seed, num_threads, num_trees, num_tasks, max_conformations;
 	double granularity;
 	bool score_only;
+	bool anna_test = true;
 
 	// Process program options.
 	try
@@ -255,7 +258,7 @@ int main(int argc, char* argv[])
 		double id_score = 0;
 		double rf_score = 0;
 		const path output_ligand_path = out_path / input_ligand_path.filename();
-		if (exists(output_ligand_path) && !equivalent(ligand_path, out_path))
+		if (exists(output_ligand_path) && !equivalent(ligand_path, out_path) && !anna_test)
 		{
 			// Extract idock score and RF-Score from output file.
 			string line;
@@ -314,18 +317,73 @@ int main(int argc, char* argv[])
 
 			if (score_only)
 			{
-				num_confs = 1;
-				conformation c0(lig.num_active_torsions);
-				c0.position = origin;
-				double e0, f0;
-				change g0(0);
-				lig.evaluate(c0, sf, rec, -99, e0, f0, g0);
-				auto r0 = lig.compose_result(e0, f0, c0);
-				r0.e_nd = r0.f * lig.flexibility_penalty_factor;
-				r0.rf = lig.calculate_rf_score(r0, rec, f);
-				id_score = r0.e_nd;
-				rf_score = r0.rf;
-				lig.write_models(output_ligand_path, {{ move(r0) }}, rec);
+				cout << "SCORE ONLY" <<endl;
+				if (anna_test){
+					cout << "ANNA TEST" << endl;
+					ofstream testfile;
+					testfile.open("test_01.txt");
+
+					// Define constants.
+					static const double pi = 3.1415926535897932; //!< Pi.
+					static const size_t seed = 1641317389;
+					const size_t num_entities = 2 + lig.num_active_torsions; // Number of entities to mutate.
+					const double e_upper_bound = static_cast<double>(4 * lig.num_heavy_atoms); // A conformation will be droped if its free energy is not better than e_upper_bound.
+
+					FixedRandom r(seed, num_entities - 1, rec.corner0, rec.corner1);
+
+					// Generate an initial random conformation c0, and evaluate it.
+					conformation c0(lig.num_active_torsions);
+					double e0, f0;
+					change g0(lig.num_active_torsions);
+					bool valid_conformation = false;
+					for (size_t i = 0; (i < 100); ++i)
+					{
+						// Randomize conformation c0.
+						c0.position = array<double, 3>{{r.ub0(), r.ub1(), r.ub2()}};
+						for (size_t i = 0; i < c0.position.size(); i++)
+						{
+							cout << c0.position[i] << " ";
+							testfile << c0.position[i] << " ";
+						}
+						c0.orientation = normalize(array<double, 4>{{r.n01(), r.n01(), r.n01(), r.n01()}});
+						for (size_t i = 0; i < c0.orientation.size(); i++)
+						{
+							cout << c0.orientation[i] << " ";
+							testfile << c0.orientation[i] << " ";
+						}
+						for (size_t i = 0; i < lig.num_active_torsions; ++i)
+						{
+							c0.torsions[i] = r.upi();
+							cout << c0.torsions[i] << " ";
+							testfile << c0.torsions[i] << " ";
+						}
+						if(lig.evaluate(c0, sf, rec, e_upper_bound, e0, f0, g0)){
+							cout << e0 << endl;
+							testfile << e0 << endl;
+						}
+						else
+						{
+							cout << 0 << endl;
+							testfile << 0 << endl;
+						}
+	
+					}
+					testfile.close();
+				}
+				else{
+					num_confs = 1;
+					conformation c0(lig.num_active_torsions);
+					c0.position = origin;
+					double e0, f0;
+					change g0(0);
+					lig.evaluate(c0, sf, rec, -99, e0, f0, g0);
+					auto r0 = lig.compose_result(e0, f0, c0);
+					r0.e_nd = r0.f * lig.flexibility_penalty_factor;
+					r0.rf = lig.calculate_rf_score(r0, rec, f);
+					id_score = r0.e_nd;
+					rf_score = r0.rf;
+					lig.write_models(output_ligand_path, {{ move(r0) }}, rec);
+				}
 			}
 			else
 			{
