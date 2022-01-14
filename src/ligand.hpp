@@ -71,7 +71,7 @@ public:
 	//! Writes a given number of conformations from a result container into a output ligand file in PDBQT format.
 	void write_models(const path& output_ligand_path, const vector<result>& results, const receptor& rec) const;
 
-	void monte_carlo(vector<result>& results, const size_t seed, const scoring_function& sf, const receptor& rec) const;
+	void monte_carlo(vector<result>& results, const size_t seed, const scoring_function& sf, const receptor& rec, const bool save_history, vector<result>& history_results) const;
 
 private:
 	//! Represents a pair of interacting atoms that are separated by 3 consecutive covalent bonds.

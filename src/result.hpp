@@ -36,6 +36,9 @@ public:
 
 	//! Clusters a result into an existing result set with a minimum RMSD requirement.
 	static void push(vector<result>& results, result&& r, const double required_square_error);
+
+	//! Adds a result to the end of results vector.
+	static void just_push_back(vector<result>& results, result&& r);
 };
 
 #endif

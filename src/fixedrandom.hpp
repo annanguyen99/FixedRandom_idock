@@ -13,8 +13,10 @@ public:
 	//FixedRandom static create_1_rng(int seed, int num_entities, array<double, 3> c0, array<double, 3> c1) {
 	//	return FixedRandom(seed, num_entities, c0, c1);
 	//}
+
+	//TODO You must document that the constructor uses the lower 32 bits of the seed only
 	FixedRandom(size_t seed, size_t num_entities, array<double, 3> c0, array<double, 3> c1) :
-		rng(seed), num_entities(RandomNumGen_NumpyCompatible_64::convert_to_uint_fast32_t(num_entities)), c0(c0), c1(c1) {
+		rng(seed & 0XFFFFFFFF), num_entities(RandomNumGen_NumpyCompatible_64::convert_to_uint_fast32_t(num_entities)), c0(c0), c1(c1) {
 	}
 	double u01() {
 		return uniformDouble(0, 1);

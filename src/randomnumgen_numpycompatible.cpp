@@ -3,7 +3,7 @@
 RandomNumGen_NumpyCompatible_64::RandomNumGen_NumpyCompatible_64(): m_haveNextVal(false), m_nextVal(0){
 }
 
-RandomNumGen_NumpyCompatible_64::RandomNumGen_NumpyCompatible_64(size_t seed): m_haveNextVal(false), m_nextVal(0), m_mersenneEngine(convert_to_uint_fast32_t(seed)) {
+RandomNumGen_NumpyCompatible_64::RandomNumGen_NumpyCompatible_64(uint32_t seed): m_haveNextVal(false), m_nextVal(0), m_mersenneEngine(seed) {
 }
 
 void RandomNumGen_NumpyCompatible_64::seed(std::uint_fast32_t newSeed){

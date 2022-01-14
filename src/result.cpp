@@ -52,3 +52,10 @@ void result::push(vector<result>& results, result&& r, const double required_squ
 	}
 	sort(results.begin(), results.end());
 }
+
+
+//! Adds a result to the end of results vector.
+void result::just_push_back(vector<result>& results, result&& r)
+{
+	results.push_back(move(r));
+}
