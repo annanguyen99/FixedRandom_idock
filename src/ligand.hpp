@@ -73,6 +73,9 @@ public:
 
 	void monte_carlo(vector<result>& results, const size_t seed, const scoring_function& sf, const receptor& rec) const;
 
+	// Funciton bfgs refactor
+	void ligand::bfgs(const scoring_function& sf, const receptor& rec, const num_alphas& num_alphas, const c1& c1, const&e1 e1, const&g1 g1) const;
+
 private:
 	//! Represents a pair of interacting atoms that are separated by 3 consecutive covalent bonds.
 	class interacting_pair

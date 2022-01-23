@@ -8,3 +8,5 @@
 doc
 bin
 dev
+out
+obj

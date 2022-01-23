@@ -606,8 +606,6 @@ void ligand::monte_carlo(vector<result>& results, const size_t seed, const scori
 
 	FixedRandom r(seed, num_entities - 1, rec.corner0, rec.corner1);
 
-
-
 	// Generate an initial random conformation c0, and evaluate it.
 	conformation c0(num_active_torsions);
 	double e0, f0;
@@ -643,6 +641,8 @@ void ligand::monte_carlo(vector<result>& results, const size_t seed, const scori
 	for (size_t i = 0; i < num_variables; ++i)
 		h1[mr(i, i)] = 1;
 
+	// START OF BFGS REFACTOR 
+
 	// Initialize necessary variables for updating the Hessian matrix h.
 	vector<double> h(h1);
 	change y(num_active_torsions); // y = g2 - g1.
@@ -677,7 +677,32 @@ void ligand::monte_carlo(vector<result>& results, const size_t seed, const scori
 			}
 		} while (!evaluate(c1, sf, rec, e_upper_bound, e1, f1, g1));
 
-		// Initialize the Hessian matrix to identity.
+
+		// Accept c1 according to Metropolis criteria.
+		const double delta = e0 - e1;
+		if (delta > 0 || r.u01() < exp(delta))
+		{
+			// best_e is the best energy of all the conformations in the container.
+			// e1 will be saved if and only if it is even better than the best one.
+			if (e1 < best_e || results.size() < results.capacity())
+			{
+				result::push(results, compose_result(e1, f1, c1), required_square_error);
+				if (e1 < best_e) best_e = e0;
+			}
+
+			// Save c1 into c0.
+			c0 = c1;
+			e0 = e1;
+		}
+	}
+
+	// END OF BFGS REFACTOR 
+}
+
+	void ligand::bfgs(const scoring_function& sf, const receptor& rec, const num_alphas& num_alphas, const c1& c1, const&e1 e1, const&g1 g1) const
+	{
+
+	    // Initialize the Hessian matrix to identity.
 		h = h1;
 
 		// Given the mutated conformation c1, use BFGS to find a local minimum.
@@ -765,23 +790,6 @@ void ligand::monte_carlo(vector<result>& results, const size_t seed, const scori
 			e1 = e2;
 			f1 = f2;
 			g1 = g2;
-		}
-
-		// Accept c1 according to Metropolis criteria.
-		const double delta = e0 - e1;
-		if (delta > 0 || r.u01() < exp(delta))
-		{
-			// best_e is the best energy of all the conformations in the container.
-			// e1 will be saved if and only if it is even better than the best one.
-			if (e1 < best_e || results.size() < results.capacity())
-			{
-				result::push(results, compose_result(e1, f1, c1), required_square_error);
-				if (e1 < best_e) best_e = e0;
-			}
-
-			// Save c1 into c0.
-			c0 = c1;
-			e0 = e1;
 		}
 	}
 }
