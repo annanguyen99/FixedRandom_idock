@@ -583,7 +583,7 @@ void ligand::write_models(const path& output_ligand_path, const vector<result>& 
 	}
 }
 
-void ligand::monte_carlo(vector<result>& results, const size_t seed, const scoring_function& sf, const receptor& rec) const
+void ligand::monte_carlo(vector<result>& results, const size_t seed, const scoring_function& sf, const receptor& rec, const bool save_history, vector<result>& history_results) const
 {
 	// Define constants.
 	static const double pi = 3.1415926535897932; //!< Pi.
@@ -605,6 +605,10 @@ void ligand::monte_carlo(vector<result>& results, const size_t seed, const scori
 	//normal_distribution<double> n01(0, 1);
 
 	FixedRandom r(seed, num_entities - 1, rec.corner0, rec.corner1);
+	//for (size_t i = 0; i < 5; i++){
+	//	cout << fixed << setprecision(15) << r.upi() << endl;
+	//}
+	// I tested, and I confirm that the numbers here are identical C++/python for task number 0. Amr
 
 	// Generate an initial random conformation c0, and evaluate it.
 	conformation c0(num_active_torsions);
@@ -649,6 +653,7 @@ void ligand::monte_carlo(vector<result>& results, const size_t seed, const scori
 	change mhy(num_active_torsions); // mhy = -h * y.
 	double yhy, yp, ryp, pco;
 
+	// result::just_push_back(history_results, this->compose_result(e0, f0, c0));
 	for (size_t mc_i = 0; mc_i < num_mc_iterations; ++mc_i)
 	{
 		size_t mutation_entity;
@@ -790,6 +795,25 @@ void ligand::monte_carlo(vector<result>& results, const size_t seed, const scori
 			e1 = e2;
 			f1 = f2;
 			g1 = g2;
+		}
+
+		// Accept c1 according to Metropolis criteria.
+		const double delta = e0 - e1;
+		if (delta > 0 || r.u01() < exp(delta))
+		{
+			// best_e is the best energy of all the conformations in the container.
+			// e1 will be saved if and only if it is even better than the best one.
+			if (e1 < best_e || results.size() < results.capacity())
+			{
+				result::push(results, compose_result(e1, f1, c1), required_square_error);
+				if (save_history)
+					result::just_push_back(history_results, compose_result(e1, f1, c1));
+				if (e1 < best_e) best_e = e0;
+			}
+
+			// Save c1 into c0.
+			c0 = c1;
+			e0 = e1;
 		}
 	}
 }

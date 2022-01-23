@@ -71,7 +71,7 @@ public:
 	//! Writes a given number of conformations from a result container into a output ligand file in PDBQT format.
 	void write_models(const path& output_ligand_path, const vector<result>& results, const receptor& rec) const;
 
-	void monte_carlo(vector<result>& results, const size_t seed, const scoring_function& sf, const receptor& rec) const;
+	void monte_carlo(vector<result>& results, const size_t seed, const scoring_function& sf, const receptor& rec, const bool save_history, vector<result>& history_results) const;
 
 	// Funciton bfgs refactor
 	void ligand::bfgs(const scoring_function& sf, const receptor& rec, const num_alphas& num_alphas, const c1& c1, const&e1 e1, const&g1 g1) const;

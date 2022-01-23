@@ -3,14 +3,14 @@
 #include <iomanip>
 #include <filesystem>
 #include <fstream>
+#include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include "io_service_pool.hpp"
 #include "safe_counter.hpp"
 #include "random_forest.hpp"
 #include "receptor.hpp"
 #include "ligand.hpp"
-#include "array.hpp"
-#include "fixedrandom.hpp"
+#include "randomnumgen_numpycompatible.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -22,6 +22,8 @@ int main(int argc, char* argv[])
 	double granularity;
 	bool score_only;
 	bool anna_test = true;
+	bool save_history;
+	bool force_dock;
 
 	// Process program options.
 	try
@@ -62,6 +64,8 @@ int main(int argc, char* argv[])
 			("conformations", value<size_t>(&max_conformations)->default_value(default_max_conformations), "maximum number of binding conformations to write")
 			("granularity", value<double>(&granularity)->default_value(default_granularity), "density of probe atoms of grid maps")
 			("score_only", bool_switch(&score_only), "scoring without docking")
+			("history", bool_switch(&save_history), "if given, saves trace of the search optimization")
+			("force", bool_switch(&force_dock), "if given, forces the application to re-dock a ligand if already present")
 			("help", "this help information")
 			("version", "version information")
 			("config", value<path>(), "configuration file to load options from")
@@ -172,6 +176,12 @@ int main(int argc, char* argv[])
 	{
 		rc.reserve(20);	// Maximum number of results obtained from a single Monte Carlo task.
 	}
+	vector<vector<result>> history_result_containers(num_tasks);
+	if (save_history) {
+		for (auto& hrc : history_result_containers)	{
+			hrc.reserve(10000);	// Maximum number of results obtained from a single Monte Carlo task.
+		}
+	}
 	vector<result> results;
 	results.reserve(max_conformations);
 
@@ -199,7 +209,19 @@ int main(int argc, char* argv[])
 
 	// Initialize a Mersenne Twister random number generator.
 	cout << "Seeding a random number generator with " << seed << endl;
-	mt19937_64 rng(seed);
+	
+	//Temp for testing
+	//mt19937_64 rng_mt19937_64(5099865445391015966);
+	//cout << rng_mt19937_64() << std::endl;
+	//rng_mt19937_64.seed(5099865445391015966 & 0xffffffff);
+	//cout << rng_mt19937_64() << std::endl;
+	//RandomNumGen_NumpyCompatible_64 rng(5099865445391015966);
+	//cout << rng() << std::endl;
+	//rng.seed(5099865445391015966 & 0xffffffff);
+	//cout << rng() << std::endl;
+
+	//mt19937_64 rng(seed);
+	RandomNumGen_NumpyCompatible_64 rng(seed & 0xffffffff);
 
 	// Initialize an io service pool and create worker threads for later use.
 	cout << "Creating an io service pool of " << num_threads << " worker threads" << endl;
@@ -258,7 +280,7 @@ int main(int argc, char* argv[])
 		double id_score = 0;
 		double rf_score = 0;
 		const path output_ligand_path = out_path / input_ligand_path.filename();
-		if (exists(output_ligand_path) && !equivalent(ligand_path, out_path) && !anna_test)
+		if ((!force_dock) && exists(output_ligand_path) && !equivalent(ligand_path, out_path))
 		{
 			// Extract idock score and RF-Score from output file.
 			string line;
@@ -389,13 +411,15 @@ int main(int argc, char* argv[])
 			{
 				// Run the Monte Carlo tasks.
 				cnt.init(num_tasks);
+				// cout << num_tasks << std::endl;
 				for (size_t i = 0; i < num_tasks; ++i)
 				{
 					assert(result_containers[i].empty());
-					const size_t s = rng();
+					assert(history_result_containers[i].empty());
+					const size_t s = rng() & 0xffffffff;
 					io.post([&, i, s]()
 					{
-						lig.monte_carlo(result_containers[i], s, sf, rec);
+						lig.monte_carlo(result_containers[i], s, sf, rec, save_history, history_result_containers[i]);
 						cnt.increment();
 					});
 				}
@@ -433,6 +457,20 @@ int main(int argc, char* argv[])
 
 					// Clear the results of the current ligand.
 					results.clear();
+				}
+
+				//output search histories
+				for(int i = 0; i< history_result_containers.size(); i++){
+					auto& history_results = history_result_containers[i];
+					// TODO Adjust free energy relative to the best conformation and flexibility.
+
+					//Create separate files per threads
+					const path hist_ligand_path = output_ligand_path.parent_path() / (boost::format("c++history-%1%-%2%") % i % output_ligand_path.filename().string()).str();
+					// Write models to file.
+					lig.write_models(hist_ligand_path, history_results, rec);
+
+					// Clear the results of the current ligand.
+					history_results.clear();
 				}
 			}
 		}

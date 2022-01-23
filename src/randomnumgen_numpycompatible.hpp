@@ -9,7 +9,7 @@
 class RandomNumGen_NumpyCompatible_64 {
 public:
     RandomNumGen_NumpyCompatible_64();
-    RandomNumGen_NumpyCompatible_64(size_t newSeed);
+    RandomNumGen_NumpyCompatible_64(uint32_t newSeed);
 
     std::uint_fast32_t min() const { return m_mersenneEngine.min(); }
     std::uint_fast32_t max() const { return m_mersenneEngine.max(); }
