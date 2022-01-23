@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
 	double granularity;
 	bool score_only;
 	bool save_history;
+	bool force_dock;
 
 	// Process program options.
 	try
@@ -63,6 +64,7 @@ int main(int argc, char* argv[])
 			("granularity", value<double>(&granularity)->default_value(default_granularity), "density of probe atoms of grid maps")
 			("score_only", bool_switch(&score_only), "scoring without docking")
 			("history", bool_switch(&save_history), "if given, saves trace of the search optimization")
+			("force", bool_switch(&force_dock), "if given, forces the application to re-dock a ligand if already present")
 			("help", "this help information")
 			("version", "version information")
 			("config", value<path>(), "configuration file to load options from")
@@ -277,7 +279,7 @@ int main(int argc, char* argv[])
 		double id_score = 0;
 		double rf_score = 0;
 		const path output_ligand_path = out_path / input_ligand_path.filename();
-		if (exists(output_ligand_path) && !equivalent(ligand_path, out_path))
+		if ((!force_dock) && exists(output_ligand_path) && !equivalent(ligand_path, out_path))
 		{
 			// Extract idock score and RF-Score from output file.
 			string line;
